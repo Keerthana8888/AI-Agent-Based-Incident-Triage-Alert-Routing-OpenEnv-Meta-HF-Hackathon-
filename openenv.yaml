@@ -1,0 +1,98 @@
+name: incident-triage-env
+version: 1.0.0
+description: >
+  OpenEnv environment for training AI agents to triage production incidents.
+  The agent receives production monitoring alerts, identifies the root cause,
+  assigns a severity level (P1-P4), and routes to the correct on-call team
+  (SRE, Database, Network, or App). Simulates real-world SRE alert fatigue
+  at companies like Google, Meta, Netflix, and Amazon.
+
+tags:
+  - openenv
+  - sre
+  - devops
+  - incident-management
+  - real-world
+  - alert-routing
+  - triage
+
+tasks:
+  - id: task_easy
+    difficulty: easy
+    description: Single alert with obvious root cause
+    expected_score_frontier: "0.9–1.0"
+    expected_score_weak: "0.4–0.6"
+
+  - id: task_medium
+    difficulty: medium
+    description: Three correlated alerts requiring root cause identification
+    expected_score_frontier: "0.5–0.75"
+    expected_score_weak: "0.2–0.4"
+
+  - id: task_hard
+    difficulty: hard
+    description: 10–15 alerts with noise — suppress false positives and escalate correctly
+    expected_score_frontier: "0.2–0.45"
+    expected_score_weak: "0.05–0.15"
+
+action_space:
+  type: object
+  fields:
+    severity:
+      type: string
+      enum: [P1, P2, P3, P4]
+      description: Incident severity level
+    team:
+      type: string
+      enum: [sre, database, network, app]
+      description: On-call team to route to
+    root_cause:
+      type: string
+      description: Free-text explanation of the root cause
+    suppressed:
+      type: array
+      items: string
+      description: Alert IDs the agent believes are noise (used in task_hard)
+
+observation_space:
+  type: object
+  fields:
+    alerts:
+      type: array
+      description: List of Alert objects visible to the agent
+    services_map:
+      type: object
+      description: Mapping of service name to responsible team
+    step:
+      type: integer
+      description: Current step number within the episode
+    max_steps:
+      type: integer
+      description: Maximum steps allowed for this task
+    task_id:
+      type: string
+      description: Identifier of the current task
+
+reward:
+  type: float
+  range: [0.0, 1.0]
+  description: >
+    Shaped reward signal returned at every step.
+    task_easy:   severity(0.5) + team(0.5)
+    task_medium: severity(0.35) + team(0.35) + root_cause(0.30)
+    task_hard:   noise_suppression(0.20) + severity(0.25) + team(0.25) + root_cause(0.30)
+                 penalty: -0.2 per real alert wrongly suppressed
+
+server:
+  port: 7860
+  endpoints:
+    - method: GET
+      path: /health
+    - method: GET
+      path: /tasks
+    - method: POST
+      path: /reset
+    - method: POST
+      path: /step
+    - method: GET
+      path: /state
