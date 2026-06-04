@@ -212,7 +212,7 @@ The Space will auto-build from the Dockerfile and expose port 7860.
 
 ## Deployment Link
 
-🔗 **Live HF Space:** `https://<your-username>.hf.space`
+🔗 
 
 ---
 
